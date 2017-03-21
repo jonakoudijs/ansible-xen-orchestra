@@ -1,0 +1,77 @@
+---
+# tasks file for xen-orchestra
+
+- name: Install prerequisites
+  apt: name={{ item }} state=present update_cache=yes
+  with_items:
+    - "apt-transport-https"
+    - "build-essential"
+    - "curl"
+    - "git"
+    - "libpng-dev"
+    - "python-minimal"
+    - "redis-server"
+
+- name: Create required directories
+  file: name={{ item }} state=directory
+  with_items:
+    - "{{ xo_server_directory }}"
+    - "{{ xo_web_directory }}"
+    - "{{ xo_config_directory }}"
+
+- name: Install NodeJS repository APT key
+  apt_key: url={{ xo_nodejs_repokey }} state=present
+
+- name: Add NodeJS repository source list
+  template: src=nodesource.list.j2 dest=/etc/apt/sources.list.d/nodesource.list
+
+- name: Install NodeJS
+  apt: name=nodejs state=present update_cache=yes
+
+- name: First-time install NPM
+  shell: >
+    curl {{ xo_nodejs_npmurl }} | sudo sh
+    creates=/usr/bin/npm
+
+- name: Clone xo-server files
+  git: repo={{ xo_server_source }}
+       dest={{ xo_server_directory }}
+       version={{ xo_server_branch }}
+  register: clonexoserver
+
+- name: Install and Build xo-server
+  shell: npm install && npm run build
+  args:
+    chdir: "{{ xo_server_directory }}"
+  when: clonexoserver.changed
+
+- name: Clone xo-web files
+  git: repo={{ xo_web_source }}
+       dest={{ xo_web_directory }}
+       version={{ xo_web_branch }}
+  register: clonexoweb
+
+- name: Install and Build xo-web
+  shell: npm install && npm run build
+  args:
+    chdir: "{{ xo_web_directory }}"
+  when: clonexoweb.changed
+
+- name: Add xo-server configuration file
+  template: src=config.yaml.j2 dest={{ xo_config_directory }}/config.yaml
+
+- name: "Install forever"
+  npm: name=forever global=yes state=present
+
+- name: "Check list of Node.js apps running"
+  command: forever list
+  register: forever_list
+  changed_when: false
+
+- name: "Start xo-server with forever"
+  command: forever start {{ xo_server_directory }}/bin/xo-server
+  when: "forever_list.stdout.find('{{ xo_server_directory }}/bin/xo-server') == -1"
+
+- name: "Start xo-web with forever"
+  command: forever start {{ xo_web_directory }}/app/app.js
+  when: "forever_list.stdout.find('{{ xo_web_directory }}/app/app.js') == -1"

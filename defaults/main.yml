@@ -1,0 +1,18 @@
+---
+# defaults file for xen-orchestra
+
+xo_config_directory: "/etc/xo-server"
+
+xo_server_branch: "stable"
+xo_server_source: "https://github.com/vatesfr/xo-server"
+xo_server_directory: "/opt/xo-server"
+
+xo_web_branch: "stable"
+xo_web_source: "https://github.com/vatesfr/xo-web"
+xo_web_directory: "/opt/xo-web"
+
+xo_debian_version: "jessie"
+
+xo_nodejs_version: "4"  # 4 or 5
+xo_nodejs_repokey: "https://deb.nodesource.com/gpgkey/nodesource.gpg.key"
+xo_nodejs_npmurl: "https://www.npmjs.com/install.sh"
